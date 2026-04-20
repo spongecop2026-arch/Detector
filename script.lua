@@ -1,3 +1,8 @@
+-- ==========================================
+-- SKIBSKIB DETECTOR (TELEPORT PERSISTENT + FRIEND CHECK)
+-- ==========================================
+
+local SkibSkib_Core = [====[
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local RunService = game:GetService("RunService")
@@ -6,9 +11,14 @@ local UserInputService = game:GetService("UserInputService")
 -- Configuration
 local GROUP_ID = 3231454 -- Nosniy Games (Rivals developers)
 local STAFF_RANK_THRESHOLD = 200 -- 200+ usually covers Mods, Admins, and Owners.
+local KNOWN_STAFF_IDS = {
+    83061794, -- Nosniy
+    18063060  -- SenseiWarrior
+    -- You can add more staff/admin User IDs here
+}
 local autoKickEnabled = true
 
--- Clean up previous instances if executed multiple times
+-- Clean up previous instances
 if CoreGui:FindFirstChild("SkibSkib_StaffDetector") then
     CoreGui.SkibSkib_StaffDetector:Destroy()
 end
@@ -68,29 +78,43 @@ local function checkStaff(player)
     if player == Players.LocalPlayer then return end
 
     task.spawn(function()
-        -- pcall this because Roblox's web API sometimes shits itself
+        -- 1. Check Group Rank
         local success, rank = pcall(function()
             return player:GetRankInGroup(GROUP_ID)
         end)
 
         if success and rank >= STAFF_RANK_THRESHOLD then
-            -- Formatted with newlines so it looks like a clean, official error prompt
             local kickMessage = string.format(
                 "\n\n⚠️ You've been kicked by SkibSkib Mod Detections ⚠️\n\nStaff Member Joined: %s\nRank Level: %d", 
                 player.Name, 
                 rank
             )
             Players.LocalPlayer:Kick(kickMessage)
+            return
+        end
+
+        -- 2. Check if they are friends with any known staff
+        for _, staffId in ipairs(KNOWN_STAFF_IDS) do
+            local fSuccess, isFriend = pcall(function()
+                return player:IsFriendsWith(staffId)
+            end)
+
+            if fSuccess and isFriend then
+                local kickMessage = string.format(
+                    "\n\n⚠️ You've been kicked by SkibSkib Mod Detections ⚠️\n\nStaff Associate Joined: %s\nReason: Friends with a developer/staff member.", 
+                    player.Name
+                )
+                Players.LocalPlayer:Kick(kickMessage)
+                return
+            end
         end
     end)
 end
 
--- Scan current players in case a mod is already in the server
 for _, player in ipairs(Players:GetPlayers()) do
     checkStaff(player)
 end
 
--- Listen for incoming connections
 Players.PlayerAdded:Connect(checkStaff)
 
 -- UI Toggle Logic
@@ -108,7 +132,7 @@ toggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Draggable Logic (Simple and effective)
+-- Draggable Logic
 local dragging, dragInput, dragStart, startPos
 frame.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -136,3 +160,10 @@ UserInputService.InputChanged:Connect(function(input)
         frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
+]====]
+
+-- Execute the payload in the current session
+loadstring(SkibSkib_Core)()
+
+-- Infinite Teleport Replication
+local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_tele
