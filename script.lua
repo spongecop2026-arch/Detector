@@ -166,4 +166,25 @@ end)
 loadstring(SkibSkib_Core)()
 
 -- Infinite Teleport Replication
-local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_tele
+local queue_on_teleport = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+
+if queue_on_teleport then
+    -- We construct a string that runs the payload AND re-applies the queue_on_teleport hook for the next server
+    local ReplicatorCode = string.format([[
+        local payload = %q
+        loadstring(payload)()
+        
+        local q = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)
+        if q then
+            -- Tell the next server to repeat this exact process
+            local loop = string.format(
+                "local payload = %%q\nloadstring(payload)()\nlocal q = queue_on_teleport or (syn and syn.queue_on_teleport) or (fluxus and fluxus.queue_on_teleport)\nif q then q(script.Source) end",
+                payload
+            )
+            q(loop)
+        end
+    ]], SkibSkib_Core)
+    
+    -- Inject it into the queue for the next teleport
+    queue_on_teleport(ReplicatorCode)
+end
